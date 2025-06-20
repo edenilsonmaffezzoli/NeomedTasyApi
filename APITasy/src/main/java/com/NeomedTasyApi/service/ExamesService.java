@@ -15,7 +15,6 @@ public class ExamesService {
     private ExamsRepository examsRepository;
 
     public void processExamRequest(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
-        LaudoPacienteDTO laudoPacienteDTO = examsRepository.obterDadosLaudo(requestDTO);
-        examsRepository.processExamRequest(requestDTO, laudoPacienteDTO);
+        examsRepository.processExamRequest(requestDTO);
     }
 }

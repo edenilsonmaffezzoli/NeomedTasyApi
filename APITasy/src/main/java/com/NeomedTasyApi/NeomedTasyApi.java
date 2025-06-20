@@ -26,7 +26,7 @@ import java.net.URI;
 
 @SpringBootApplication
 @Component
-public class NeomedTasyApi implements ApplicationRunner {
+public class NeomedTasyApi {
 
 	@Value("${springdoc.swagger-ui.path:/swagger-ui.html}")
 	private String swaggerPath;
@@ -38,7 +38,7 @@ public class NeomedTasyApi implements ApplicationRunner {
 		SpringApplication.run(NeomedTasyApi.class, args);
 	}
 
-	@Override
+	/*@Override
 	public void run(ApplicationArguments args) throws Exception {
 		String url = "http://localhost:" + serverPort + swaggerPath;
 		if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
@@ -48,6 +48,6 @@ public class NeomedTasyApi implements ApplicationRunner {
 			Runtime.getRuntime().exec("cmd /c start chrome " + url); // Para Windows
 			// Para Linux: Runtime.getRuntime().exec("google-chrome " + url);
 			// Para Mac: Runtime.getRuntime().exec("open -a 'Google Chrome' " + url);
-		}
-	}
+		}*/
+
 }

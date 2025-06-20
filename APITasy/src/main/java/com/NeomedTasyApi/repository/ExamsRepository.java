@@ -37,11 +37,11 @@ public class ExamsRepository {
                     FROM tasy.prescr_procedimento a,
                          tasy.prescr_medica b
                     WHERE a.nr_prescricao = b.nr_prescricao
-                    AND a.nr_seq_interno = 20360320
+                    AND a.nr_seq_interno = ?
                 """;
 
 
-        prescricaoDTO = jdbcTemplate.queryForObject(sql, /*new Object[]{requestDTO.getPatient().getIntegration_key()},*/ (rs, rowNum) -> new PrescricaoDTO(
+        prescricaoDTO = jdbcTemplate.queryForObject(sql, new Object[]{requestDTO.getPatient().getIntegration_key()}, (rs, rowNum) -> new PrescricaoDTO(
                 rs.getString("CD_MEDICO"),
                 rs.getLong("NR_PRESCRICAO"),
                 rs.getLong("NR_SEQUENCIA"),
@@ -65,7 +65,7 @@ public class ExamsRepository {
 
         laudoPacienteDTO.setNrSequencia(nrSequenciaLaudoPaciente);
         laudoPacienteDTO.setDsLaudo(this.converterLaudoBase64toText(requestDTO));
-        laudoPacienteDTO.setNrAtendimento(null);
+        laudoPacienteDTO.setNrAtendimento(prescricaoDTO.getNrAtendimento());
         laudoPacienteDTO.setDtEntradaUnidade(dataAtual);
         laudoPacienteDTO.setNrLaudo((long) 1);
         laudoPacienteDTO.setNmUsuario(nmUsuarioPadrao);
@@ -104,8 +104,8 @@ public class ExamsRepository {
         return laudoPacienteDTO;
     }
 
-    public void processExamRequest(ExamesRequestDTO requestDTO, LaudoPacienteDTO laudoPacienteDTO) throws UnsupportedEncodingException {
-
+    public void processExamRequest(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
+        LaudoPacienteDTO laudoPacienteDTO = this.obterDadosLaudo(requestDTO);
 
         String sql = """
             INSERT INTO TASY.LAUDO_PACIENTE (
