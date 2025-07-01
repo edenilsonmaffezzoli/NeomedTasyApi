@@ -5,6 +5,7 @@ import java.util.Date;
 public class LaudoPacienteDTO {
     private Long nrSequencia;
     private Long nrAtendimento;
+    private long nrControle;
     private Date dtEntradaUnidade;
     private Long nrLaudo;
     private String nmUsuario;
@@ -54,6 +55,14 @@ public class LaudoPacienteDTO {
 
     public void setNrAtendimento(Long nrAtendimento) {
         this.nrAtendimento = nrAtendimento;
+    }
+
+    public long getNrControle() {
+        return nrControle;
+    }
+
+    public void setNrControle(long nrControle) {
+        this.nrControle = nrControle;
     }
 
     public Date getDtEntradaUnidade() {

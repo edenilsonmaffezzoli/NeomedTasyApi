@@ -4,7 +4,6 @@ import com.NeomedTasyApi.dto.ExamesRequestDTO;
 import com.NeomedTasyApi.dto.LaudoPacienteDTO;
 import com.NeomedTasyApi.dto.PrescricaoDTO;
 
-
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -25,7 +24,7 @@ public class ExamsRepository {
     }
 
     public PrescricaoDTO obterDadosPrescricao(ExamesRequestDTO requestDTO) {
-        PrescricaoDTO prescricaoDTO = new PrescricaoDTO();
+        PrescricaoDTO prescricaoDTO;
 
         String sql = """
                     SELECT b.CD_MEDICO as CD_MEDICO,
@@ -41,7 +40,7 @@ public class ExamsRepository {
                 """;
 
 
-        prescricaoDTO = jdbcTemplate.queryForObject(sql, new Object[]{requestDTO.getPatient().getIntegration_key()}, (rs, rowNum) -> new PrescricaoDTO(
+        prescricaoDTO = jdbcTemplate.queryForObject(sql, new Object[]{requestDTO.getExam().getCode()}, (rs, rowNum) -> new PrescricaoDTO(
                 rs.getString("CD_MEDICO"),
                 rs.getLong("NR_PRESCRICAO"),
                 rs.getLong("NR_SEQUENCIA"),
@@ -59,6 +58,7 @@ public class ExamsRepository {
         final Date dataAtual = new Date(System.currentTimeMillis());
         final String nmUsuarioPadrao = "TasyApiNeomed";
         final PrescricaoDTO prescricaoDTO = this.obterDadosPrescricao(requestDTO);
+        final long nrSeqLaudo = this.obterSeExisteLaudoAnterior(requestDTO);
 
         long nrSequenciaLaudoPaciente = jdbcTemplate.queryForObject(
                 "select tasy.laudo_paciente_seq.nextval from dual", Integer.class);
@@ -66,8 +66,9 @@ public class ExamsRepository {
         laudoPacienteDTO.setNrSequencia(nrSequenciaLaudoPaciente);
         laudoPacienteDTO.setDsLaudo(this.converterLaudoBase64toText(requestDTO));
         laudoPacienteDTO.setNrAtendimento(prescricaoDTO.getNrAtendimento());
+        laudoPacienteDTO.setNrControle(Long.parseLong(requestDTO.getExam().getCode()));
         laudoPacienteDTO.setDtEntradaUnidade(dataAtual);
-        laudoPacienteDTO.setNrLaudo((long) 1);
+        laudoPacienteDTO.setNrLaudo(nrSeqLaudo);
         laudoPacienteDTO.setNmUsuario(nmUsuarioPadrao);
         laudoPacienteDTO.setDtAtualizacao(dataAtual);
         laudoPacienteDTO.setCdMedicoResp(prescricaoDTO.getCdMedico());
@@ -104,12 +105,41 @@ public class ExamsRepository {
         return laudoPacienteDTO;
     }
 
+    private long obterSeExisteLaudoAnterior(ExamesRequestDTO requestDTO) {
+
+        long nrLaudo = jdbcTemplate.queryForObject(
+                "select nvl(max(nr_laudo),0) " +
+                        "from tasy.laudo_paciente " +
+                        "where nr_controle = ? " +
+                        "and dt_cancelamento is null ", new Object[]{requestDTO.getExam().getCode()}, Integer.class);
+
+        if (nrLaudo > 0) {
+            this.inativarLaudoAtual(requestDTO.getExam().getCode());
+        }
+        /*Sempre enviará o laudo atual + 1, caso não exista, a variável nrLaudo será 0, então acresce 1, para que o primeiro laudo seja o 1*/
+        return nrLaudo +1;
+
+    }
+
+    private void inativarLaudoAtual(String code) {
+        String sql = """
+                UPDATE  TASY.LAUDO_PACIENTE 
+                SET     DT_CANCELAMENTO = SYSDATE,
+                        NM_USUARIO_CANCEL = 'TasyApiNeomed',
+                        DT_ATUALIZACAO = SYSDATE,
+                        NM_USUARIO = 'TasyApiNeomed'
+                WHERE   NR_CONTROLE = ?
+                AND     DT_CANCELAMENTO IS NULL
+                """;
+        jdbcTemplate.update(sql,Long.parseLong(code));
+    }
+
     public void processExamRequest(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
         LaudoPacienteDTO laudoPacienteDTO = this.obterDadosLaudo(requestDTO);
 
         String sql = """
             INSERT INTO TASY.LAUDO_PACIENTE (
-                NR_SEQUENCIA, NR_ATENDIMENTO, DT_ENTRADA_UNIDADE, NR_LAUDO, NM_USUARIO,
+                NR_SEQUENCIA, NR_CONTROLE,NR_ATENDIMENTO, DT_ENTRADA_UNIDADE, NR_LAUDO, NM_USUARIO,
                 DT_ATUALIZACAO, CD_MEDICO_RESP, DS_TITULO_LAUDO, DT_LAUDO, IE_NORMAL,
                 DT_EXAME, NR_PRESCRICAO, DS_LAUDO, DT_APROVACAO, NM_USUARIO_APROVACAO,
                 NR_SEQ_PROC, NR_SEQ_PRESCRICAO, DT_LIBERACAO, DT_PREV_ENTREGA, QT_IMAGEM,
@@ -117,11 +147,12 @@ public class ExamsRepository {
                 NM_USUARIO_LIBERACAO, QT_CARACTERES, CD_PESSOA_FISICA, IE_STATUS_LAUDO,
                 IE_CD_LAUDO, IE_TUMOR, IE_FORMATO_TEXTO, IE_GERAR_COMUNIC, IE_EXIGE_SEG_APROV,
                 IE_URGENTE, DS_UTC, DS_UTC_ATUALIZACAO
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         jdbcTemplate.update(sql,
                 laudoPacienteDTO.getNrSequencia(),
+                laudoPacienteDTO.getNrControle(),
                 laudoPacienteDTO.getNrAtendimento(),
                 laudoPacienteDTO.getDtEntradaUnidade() != null ? new Timestamp(laudoPacienteDTO.getDtEntradaUnidade().getTime()) : null,
                 laudoPacienteDTO.getNrLaudo(),
