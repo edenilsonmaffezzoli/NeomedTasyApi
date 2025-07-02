@@ -3,6 +3,7 @@ package com.NeomedTasyApi.controller;
 import com.NeomedTasyApi.dto.ExamesRequestDTO;
 import com.NeomedTasyApi.service.ExamesService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
@@ -15,9 +16,12 @@ public class ExamesController {
     private ExamesService examesService;
 
     @PostMapping
-    public void receiveExamRequest(@RequestBody ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
-        //throw new Exception("qualquer string si dentro");
-        examesService.processExamRequest(requestDTO);
-
+    public ResponseEntity<String> receiveExamRequest(@RequestBody ExamesRequestDTO requestDTO) {
+        try {
+            examesService.processExamRequest(requestDTO);
+            return ResponseEntity.ok("Laudo processado com sucesso"); // HTTP 200
+        } catch (UnsupportedEncodingException e) {
+            return ResponseEntity.ok("Erro ao processar laudo"); // Ainda retorna 200
+        }
     }
 }
