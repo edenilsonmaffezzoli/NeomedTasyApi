@@ -14,8 +14,12 @@ public class SecurityInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String token = request.getHeader("Authorization");
         
+        System.out.println("Token recebido: " + token);
+        System.out.println("Token esperado: " + REQUIRED_TOKEN);
+        
         if (token == null || !token.equals(REQUIRED_TOKEN)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("text/plain; charset=UTF-8");
             response.getWriter().write("Token inválido ou não fornecido");
             return false;
         }
