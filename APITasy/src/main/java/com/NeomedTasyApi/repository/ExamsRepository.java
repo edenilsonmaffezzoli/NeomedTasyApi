@@ -7,7 +7,7 @@ import com.NeomedTasyApi.dto.PrescricaoDTO;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -53,7 +53,7 @@ public class ExamsRepository {
 
     }
 
-    public LaudoPacienteDTO obterDadosLaudo(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
+    public LaudoPacienteDTO obterDadosLaudo(ExamesRequestDTO requestDTO) {
         LaudoPacienteDTO laudoPacienteDTO = new LaudoPacienteDTO();
         final Date dataAtual = new Date(System.currentTimeMillis());
         final String nmUsuarioPadrao = "TasyApiNeomed";
@@ -62,7 +62,7 @@ public class ExamsRepository {
         final long nrSeqLaudo = this.obterSeExisteLaudoAnterior(nrSeqDicom);
 
         long nrSequenciaLaudoPaciente = jdbcTemplate.queryForObject(
-                "select tasy.laudo_paciente_seq.nextval from dual", Integer.class);
+                "select tasy.laudo_paciente_seq.nextval from dual", Long.class);
 
         laudoPacienteDTO.setNrSequencia(nrSequenciaLaudoPaciente);
         laudoPacienteDTO.setDsLaudo(this.converterLaudoBase64toText(requestDTO));
@@ -81,7 +81,7 @@ public class ExamsRepository {
         laudoPacienteDTO.setDtAprovacao(dataAtual);
         laudoPacienteDTO.setNmUsuarioAprovacao(nmUsuarioPadrao);
         laudoPacienteDTO.setNrSeqProc(null);
-        laudoPacienteDTO.setNrSeqPrescricao(laudoPacienteDTO.getNrSeqPrescricao());
+        laudoPacienteDTO.setNrSeqPrescricao(prescricaoDTO.getNrSequencia());
         laudoPacienteDTO.setDtLiberacao(dataAtual);
         laudoPacienteDTO.setDtPrevEntrega(dataAtual);
         laudoPacienteDTO.setQtImagem(1);
@@ -112,7 +112,7 @@ public class ExamsRepository {
                 "select nvl(max(nr_laudo),0) " +
                         "from tasy.laudo_paciente " +
                         "where nr_controle = ? " +
-                        "and dt_cancelamento is null ", new Object[]{nrSeqDicom}, Integer.class);
+                        "and dt_cancelamento is null ", new Object[]{nrSeqDicom}, Long.class);
 
         if (nrLaudo > 0) {
             this.inativarLaudoAtual(nrSeqDicom);
@@ -135,7 +135,7 @@ public class ExamsRepository {
         jdbcTemplate.update(sql,nrSeqDicom);
     }
 
-    public void processExamRequest(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
+    public void processExamRequest(ExamesRequestDTO requestDTO) {
         LaudoPacienteDTO laudoPacienteDTO = this.obterDadosLaudo(requestDTO);
 
         String sql = """
@@ -192,9 +192,9 @@ public class ExamsRepository {
         );
     }
 
-    private String converterLaudoBase64toText(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
+    private String converterLaudoBase64toText(ExamesRequestDTO requestDTO) {
         String dslaudoBase64 = requestDTO.getMedical_report().getFile_base64();
         byte[] decodedBytes = Base64.getDecoder().decode(dslaudoBase64);
-        return new String(decodedBytes, "UTF-8");
+        return new String(decodedBytes, StandardCharsets.UTF_8);
     }
 }

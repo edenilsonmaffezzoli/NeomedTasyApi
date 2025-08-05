@@ -8,14 +8,14 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @Component
 public class SecurityInterceptor implements HandlerInterceptor {
     
+    // TODO: Move token to environment variable or configuration file for security
     private static final String REQUIRED_TOKEN = "r5b6gVwpy8M41WLh7y1Q5ao5MUQYi2398Bltak3h7lxHXX8HuyetAV81reKzwR8E";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String token = request.getHeader("Authorization");
         
-        System.out.println("Token recebido: " + token);
-        System.out.println("Token esperado: " + REQUIRED_TOKEN);
+        // Removed debug logs to prevent token exposure in logs
         
         if (token == null || !token.equals(REQUIRED_TOKEN)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
