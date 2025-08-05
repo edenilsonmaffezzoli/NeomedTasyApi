@@ -23,7 +23,7 @@ public class ExamsRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public PrescricaoDTO obterDadosPrescricao(ExamesRequestDTO requestDTO) {
+    public PrescricaoDTO obterDadosPrescricao(Long nrSeqDicom) {
         PrescricaoDTO prescricaoDTO;
 
         String sql = """
@@ -40,7 +40,7 @@ public class ExamsRepository {
                 """;
 
 
-        prescricaoDTO = jdbcTemplate.queryForObject(sql, new Object[]{requestDTO.getExam().getCode()}, (rs, rowNum) -> new PrescricaoDTO(
+        prescricaoDTO = jdbcTemplate.queryForObject(sql, new Object[]{nrSeqDicom}, (rs, rowNum) -> new PrescricaoDTO(
                 rs.getString("CD_MEDICO"),
                 rs.getLong("NR_PRESCRICAO"),
                 rs.getLong("NR_SEQUENCIA"),
@@ -57,8 +57,9 @@ public class ExamsRepository {
         LaudoPacienteDTO laudoPacienteDTO = new LaudoPacienteDTO();
         final Date dataAtual = new Date(System.currentTimeMillis());
         final String nmUsuarioPadrao = "TasyApiNeomed";
-        final PrescricaoDTO prescricaoDTO = this.obterDadosPrescricao(requestDTO);
-        final long nrSeqLaudo = this.obterSeExisteLaudoAnterior(requestDTO);
+        final long nrSeqDicom = requestDTO.getPatient().getIntegration_key();
+        final PrescricaoDTO prescricaoDTO = this.obterDadosPrescricao(nrSeqDicom);
+        final long nrSeqLaudo = this.obterSeExisteLaudoAnterior(nrSeqDicom);
 
         long nrSequenciaLaudoPaciente = jdbcTemplate.queryForObject(
                 "select tasy.laudo_paciente_seq.nextval from dual", Integer.class);
@@ -66,7 +67,7 @@ public class ExamsRepository {
         laudoPacienteDTO.setNrSequencia(nrSequenciaLaudoPaciente);
         laudoPacienteDTO.setDsLaudo(this.converterLaudoBase64toText(requestDTO));
         laudoPacienteDTO.setNrAtendimento(prescricaoDTO.getNrAtendimento());
-        laudoPacienteDTO.setNrControle(Long.parseLong(requestDTO.getExam().getCode()));
+        laudoPacienteDTO.setNrControle(nrSeqDicom);
         laudoPacienteDTO.setDtEntradaUnidade(dataAtual);
         laudoPacienteDTO.setNrLaudo(nrSeqLaudo);
         laudoPacienteDTO.setNmUsuario(nmUsuarioPadrao);
@@ -105,23 +106,23 @@ public class ExamsRepository {
         return laudoPacienteDTO;
     }
 
-    private long obterSeExisteLaudoAnterior(ExamesRequestDTO requestDTO) {
+    private long obterSeExisteLaudoAnterior(Long nrSeqDicom) {
 
         long nrLaudo = jdbcTemplate.queryForObject(
                 "select nvl(max(nr_laudo),0) " +
                         "from tasy.laudo_paciente " +
                         "where nr_controle = ? " +
-                        "and dt_cancelamento is null ", new Object[]{requestDTO.getExam().getCode()}, Integer.class);
+                        "and dt_cancelamento is null ", new Object[]{nrSeqDicom}, Integer.class);
 
         if (nrLaudo > 0) {
-            this.inativarLaudoAtual(requestDTO.getExam().getCode());
+            this.inativarLaudoAtual(nrSeqDicom);
         }
         /*Sempre enviará o laudo atual + 1, caso não exista, a variável nrLaudo será 0, então acresce 1, para que o primeiro laudo seja o 1*/
         return nrLaudo +1;
 
     }
 
-    private void inativarLaudoAtual(String code) {
+    private void inativarLaudoAtual(Long nrSeqDicom) {
         String sql = """
                 UPDATE  TASY.LAUDO_PACIENTE 
                 SET     DT_CANCELAMENTO = SYSDATE,
@@ -131,7 +132,7 @@ public class ExamsRepository {
                 WHERE   NR_CONTROLE = ?
                 AND     DT_CANCELAMENTO IS NULL
                 """;
-        jdbcTemplate.update(sql,Long.parseLong(code));
+        jdbcTemplate.update(sql,nrSeqDicom);
     }
 
     public void processExamRequest(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
@@ -192,7 +193,7 @@ public class ExamsRepository {
     }
 
     private String converterLaudoBase64toText(ExamesRequestDTO requestDTO) throws UnsupportedEncodingException {
-        String dslaudoBase64 = requestDTO.getMedical_report().getContent();
+        String dslaudoBase64 = requestDTO.getMedical_report().getFile_base64();
         byte[] decodedBytes = Base64.getDecoder().decode(dslaudoBase64);
         return new String(decodedBytes, "UTF-8");
     }
