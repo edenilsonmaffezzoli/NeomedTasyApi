@@ -193,8 +193,54 @@ public class ExamsRepository {
     }
 
     private String converterLaudoBase64toText(ExamesRequestDTO requestDTO) {
+        // Validação do objeto medical_report
+        if (requestDTO.getMedical_report() == null) {
+            throw new IllegalArgumentException("Medical report não pode ser nulo");
+        }
+        
         String dslaudoBase64 = requestDTO.getMedical_report().getFile_base64();
-        byte[] decodedBytes = Base64.getDecoder().decode(dslaudoBase64);
-        return new String(decodedBytes, StandardCharsets.UTF_8);
+        
+        // Validação de entrada
+        if (dslaudoBase64 == null || dslaudoBase64.trim().isEmpty()) {
+            throw new IllegalArgumentException("Base64 string não pode ser nulo ou vazio");
+        }
+        
+        try {
+            // Log da string original para debug
+            System.err.println("String Base64 original recebida (primeiros 200 chars): " + 
+                (dslaudoBase64.length() > 200 ? dslaudoBase64.substring(0, 200) + "..." : dslaudoBase64));
+            
+            // Remove espaços em branco e quebras de linha
+            dslaudoBase64 = dslaudoBase64.replaceAll("\\s+", "");
+            
+            // Validação mais rigorosa de caracteres Base64
+            for (int i = 0; i < dslaudoBase64.length(); i++) {
+                char c = dslaudoBase64.charAt(i);
+                if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || 
+                      (c >= '0' && c <= '9') || c == '+' || c == '/' || c == '=')) {
+                    throw new IllegalArgumentException("Caractere inválido encontrado na posição " + i + 
+                        ": '" + c + "' (código: " + (int)c + "). Caracteres válidos: A-Z, a-z, 0-9, +, /, =");
+                }
+            }
+            
+            // Validação do padding
+            if (dslaudoBase64.length() % 4 != 0) {
+                throw new IllegalArgumentException("Comprimento inválido para Base64. Deve ser múltiplo de 4. Comprimento atual: " + dslaudoBase64.length());
+            }
+            
+            byte[] decodedBytes = Base64.getDecoder().decode(dslaudoBase64);
+            return new String(decodedBytes, StandardCharsets.UTF_8);
+            
+        } catch (IllegalArgumentException e) {
+            // Log detalhado do erro para debug
+            System.err.println("ERRO DETALHADO - Falha ao decodificar Base64:");
+            System.err.println("Mensagem: " + e.getMessage());
+            System.err.println("String após limpeza (primeiros 100 chars): " + 
+                (dslaudoBase64.length() > 100 ? dslaudoBase64.substring(0, 100) + "..." : dslaudoBase64));
+            System.err.println("Comprimento da string: " + dslaudoBase64.length());
+            
+            // Re-throw com mensagem mais clara
+            throw new IllegalArgumentException("Falha ao decodificar Base64: " + e.getMessage(), e);
+        }
     }
 }

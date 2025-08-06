@@ -30,6 +30,11 @@ public class ExamesController {
             return ResponseEntity.ok("Laudo processado com sucesso"); // HTTP 200
 
         } catch (IllegalArgumentException e) {
+            // Verifica se é erro de Base64 para retornar mensagem mais específica
+            if (e.getMessage().contains("Base64")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Erro de codificação: " + e.getMessage()); // HTTP 400
+            }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Dados inválidos: " + e.getMessage()); // HTTP 400
         } catch (Exception e) {
